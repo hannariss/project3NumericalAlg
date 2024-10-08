@@ -13,11 +13,15 @@ u3_init = np.array([32.5, 15, 15, 32.5, 40, 20, 20, 20, 40, 20, 20, 20, 32.5, 15
 
 # Derive Gamma from temperature vectors
 def gamma(vec1, vec2=None):
+    '''
+    When two temperature vectors are provided, we assign Gamma 1 for room 1 and Gamma 2 for room 3 (small rooms), 
+    otherwise we assign Gamma 1 and 2 for room 2 (big room)
+    '''
     if vec2 is not None: # two temperature vectors have been provided
         Gamma1 = np.array([vec1[3], vec1[7], vec1[11], vec1[15]])
         Gamma2 = np.array([vec2[15], vec2[11], vec2[7], vec2[3]])
     else:
-        Gamma1 = np.array([vec1[0], vec1[4], vec1[8], vec1[12]])
+        Gamma1 = np.array([vec1[0], vec1[4], vec1[8], vec1[12]]) 
         Gamma2 = np.array([vec1[15], vec1[19], vec1[23], vec1[27]])
     return Gamma1, Gamma2
 
@@ -111,3 +115,29 @@ def relax(u, u_new):
     return u_new
 
 print(relax(u1_init, u1_new))
+
+def reset_walls(u1, u2, u3):
+    u1_walls = np.array([32.5, 15, 15, 10, 40, u1[5], u1[6], u1[7], 40, u1[9], u1[10], u1[11], 32.5, 15, 15, 15])
+    u2_walls = np.array([10, 5, 5, 10, u2[4], u2[5], u2[6], 15, u2[8], u2[9], u2[10], 15, 15, u2[13], u2[14], 15, 15, u2[17], u2[18], u2[19], 15, u2[21], u2[22], u2[23], 32.5, 40, 40, 32.5])
+    u3_walls = np.array([32.5, 15, 15, 32.5, 40, u3[5], u3[6], u3[7], 40, u3[9], u3[10], u3[11], 32.5, 15, 15, 15])
+    return u1_walls, u2_walls, u3_walls
+
+# Iteration
+iterations = 10
+u1 = u1_init
+u2 = u2_init
+u3 = u3_init
+
+while iterations > 0:
+    u2_new = solve_omega2(u1, u3, A2)
+    u1_new = solve_omega1(u2_new, A1)
+    u3_new = solve_omega3(u2_new, A1)
+    u1 = relax(u1, u1_new)
+    u2 = relax(u2, u2_new)
+    u3 = relax(u3, u3_new)
+    u1, u2, u3 = reset_walls(u1, u2, u3)
+    iterations -= 1
+
+print(u1)
+print(u2)
+print(u3)
