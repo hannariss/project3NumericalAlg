@@ -2,6 +2,8 @@ from mpi4py import MPI
 import numpy as np
 from scipy.linalg import solve
 
+
+# Initialize MPI communication
 comm = MPI.Comm.Clone( MPI.COMM_WORLD )
 rank = comm.Get_rank()
 
@@ -9,27 +11,13 @@ rank = comm.Get_rank()
 h = 1/3
 omega = 0.8
 
-# Define initial temperature vectors, assume inner room temperature is 20°C
+# Define initial temperature vectors
+# Assume inner room temperature is 20°C
 u1_init = np.array([32.5, 15, 15, 10, 40, 20, 20, 20, 40, 20, 20, 20, 32.5, 15, 15, 15])
 u2_init = np.array([10, 5, 5, 10, 20, 20, 20, 15, 20, 20, 20, 15, 15, 20, 20, 15, 15, 20, 20, 20, 15, 20, 20, 20, 32.5, 40, 40, 32.5])
 u3_init = np.array([32.5, 15, 15, 32.5, 40, 20, 20, 20, 40, 20, 20, 20, 32.5, 15, 15, 15])
 
-# Derive Gamma from temperature vectors
-def gamma(vec1, vec2=None):
-    '''
-    When two temperature vectors are provided, we assign Gamma 1 for room 1 and Gamma 2 for room 3 (small rooms), 
-    otherwise we assign Gamma 1 and 2 for room 2 (big room)
-    '''
-    if vec2 is not None: # two temperature vectors have been provided
-        Gamma1 = np.array([vec1[3], vec1[7], vec1[11], vec1[15]])
-        Gamma2 = np.array([vec2[15], vec2[11], vec2[7], vec2[3]])
-    else:
-        Gamma1 = np.array([vec1[0], vec1[4], vec1[8], vec1[12]]) 
-        Gamma2 = np.array([vec1[15], vec1[19], vec1[23], vec1[27]])
-    return Gamma1, Gamma2
-
-
-# Matrix for rooms 1 and 3
+# Coefficient matrix A for rooms 1 and 3
 A1 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [1, -4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 1, -4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -47,7 +35,7 @@ A1 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4, 1],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -3]])
 
-# Matrix for room 2
+# Coefficient matrix A for room 2
 A2 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, -4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 1, -4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -77,16 +65,36 @@ A2 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4]])
 
+
+def gamma(vec1, vec2=None):
+    '''
+    Derives boundary values (Gamma) from temperature vectors of the rooms.
+    If two temperature vectors are provided, it extracts boundary values for small rooms (room 1 and room 3).
+    If only one temperature vector is provided, it extracts boundary values for the large room (room 2).
+    
+    Parameters:
+    vec1 (ndarray): Temperature vector of room 1 or 2.
+    vec2 (ndarray, optional): Temperature vector of room 3.
+    
+    Returns:
+    Gamma1 (ndarray): Boundary temperatures from one side of the room.
+    Gamma2 (ndarray): Boundary temperatures from the opposite side of the room.
+    
+    '''
+    if vec2 is not None: # Two temperature vectors have been provided
+        Gamma1 = np.array([vec1[3], vec1[7], vec1[11], vec1[15]])
+        Gamma2 = np.array([vec2[15], vec2[11], vec2[7], vec2[3]])
+    else: # For room 2
+        Gamma1 = np.array([vec1[0], vec1[4], vec1[8], vec1[12]]) 
+        Gamma2 = np.array([vec1[15], vec1[19], vec1[23], vec1[27]])
+    return Gamma1, Gamma2
+
 # Step 1: Solve problem for room 2
 def solve_omega2(u1, u3, A):
     Gamma1, Gamma2 = gamma(u1, u3)
     u_DC = - 1/(h**2) * np.array([0, Gamma1[0], 0, 0, 0, Gamma1[1], 0, 0, 0, Gamma1[2], 0, 0, 0, Gamma1[3], Gamma2[0], 0, 0, 0, Gamma2[1], 0, 0, 0, Gamma2[2], 0, 0, 0, Gamma2[3], 0])
     u2_new = solve(A, u_DC)
     return u2_new
-
-print(solve_omega2(u1_init, u3_init, A2))
-
-u2_new = solve_omega2(u1_init, u3_init, A2)
 
 # Step 2: Solve problem for room 1 and 3 (single functions for each room)
 def solve_omega1(u2, A):
@@ -95,27 +103,26 @@ def solve_omega1(u2, A):
     u1_new = solve(A, u_NC)
     return u1_new
 
-# print(solve_omega1(u2_init, A1))
-# print(solve_omega1(u2_new, A1))
-
 def solve_omega3(u2, A):
     Gamma1, Gamma2 = gamma(u2)
     u_NC = - 1/h * np.array([0, 0, 0, Gamma2[3], 0, 0, 0, Gamma2[2], 0, 0, 0, Gamma2[1], 0, 0, 0, Gamma2[0]])
     u3_new = solve(A, u_NC)
     return u3_new
 
-# print(solve_omega3(u2_init, A1))
-# print(solve_omega3(u2_new, A1))
-
-u1_new = solve_omega1(u2_new, A1)
-u3_new = solve_omega3(u2_new, A1)
-
 # Step 3: Relaxation
 def relax(u, u_new):
+    '''
+    Applies relaxation method to smooth the temperature values by combining the old and new solutions.
+
+    Parameters:
+    u (ndarray): Current temperature vector.
+    u_new (ndarray): New calculated temperature vector.
+
+    Returns:
+    ndarray: Relaxed temperature vector.
+    '''
     u_new = omega * u_new + (1 - omega) * u
     return u_new
-
-# print(relax(u1_init, u1_new))
 
 def reset_walls(u1, u2, u3):
     u1_walls = np.array([32.5, 15, 15, 10, 40, u1[5], u1[6], u1[7], 40, u1[9], u1[10], u1[11], 32.5, 15, 15, 15])
@@ -127,7 +134,6 @@ def reset_walls(u1, u2, u3):
 # Iteration
 #------------
 
-iterations = 10
 u1 = u1_init
 u2 = u2_init
 u3 = u3_init
@@ -135,6 +141,7 @@ u3 = u3_init
 print('\n Initial conditions: ')
 print(f'\n u_1: \n {u1.reshape(4,4)} \n\n u_2: \n {u2.reshape(7,4)} \n\n u_3: \n {u3.reshape(4,4)}')
 
+# iterations = 10
 # while iterations > 0:
 #     u2_new = solve_omega2(u1, u3, A2)
 #     u1_new = solve_omega1(u2_new, A1)
@@ -147,7 +154,7 @@ print(f'\n u_1: \n {u1.reshape(4,4)} \n\n u_2: \n {u2.reshape(7,4)} \n\n u_3: \n
 #     print(f'\n u_1: \n {u1.reshape(4,4)} \n\n u_2: \n {u2.reshape(7,4)} \n\n u_3: \n {u3.reshape(4,4)}')
 #     iterations -= 1
 
-
+# Iteration process with MPI communication
 num_iterations = 10
 
 for iteration in range(num_iterations):
