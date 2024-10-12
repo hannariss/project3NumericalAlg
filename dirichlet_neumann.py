@@ -9,7 +9,17 @@ A1 = sparse_matrix_smallroom(4, h, 16) # Coefficient matrix A for rooms 1 and 3
 A2 = sparse_matrix_bigroom(4, h) # Coefficient matrix A for room 2
 
 # Create flat object
-apartment = dn.DN_Method(h)
+apartment = dn.DN_Method(h, t_n=15, t_h=70)
 
 # Dirichlet Neumann Iteration
 apartment.dn_iteration(A1, A2)
+
+## Project 3a:
+
+# A3 = sparse_matrix_smallroom(4, h, 16) Coefficient matrix A for room 4
+
+# # Create flat object
+# apartment = dn.DN_Method4Rooms(h)
+
+# # Dirichlet Neumann Iteration
+# apartment.dn_iteration(A1, A2, A3)
