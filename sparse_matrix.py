@@ -30,7 +30,7 @@ value = np.array([-4, 1, 1])
 
 n = 4
 
-def sparse_matrix_neumann(n):
+def sparse_matrix_smallroom(n):
     k = np.arange(0, n**2, 1)
 
     row = []
@@ -43,15 +43,17 @@ def sparse_matrix_neumann(n):
 
         # lower neighbour
         if j > 0:
-            row.append(k)
-            col.append(k-n)
-            value.append(1)
+            if not ((i > 1 and i < n-1) and j == 1):
+                row.append(k)
+                col.append(k-n)
+                value.append(1)
         
         # left neighbour
         if i > 0:
-            row.append(k)
-            col.append(k-1)
-            value.append(1)
+            if not (i == 1 and (j > 0 and j < n-1)): # using dirichlet for all walls makes us loose the left neighbour in some cases
+                row.append(k)
+                col.append(k-1)
+                value.append(1)
 
         # diagonal
         row.append(k)
@@ -70,9 +72,10 @@ def sparse_matrix_neumann(n):
 
         # upper neighbour
         if j < n-1:
-            row.append(k)
-            col.append(k + n)
-            value.append(1)
+            if not ((i > 1 and i < n-1) and j == n-2):
+                row.append(k)
+                col.append(k + n)
+                value.append(1)
 
     row = np.array(row)
     col = np.array(col)
@@ -80,7 +83,7 @@ def sparse_matrix_neumann(n):
     return csr_matrix((value, (row, col) )) * 1/(h**2)
 
 
-def sparse_matrix_dirichlet(n):
+def sparse_matrix_bigroom(n):
     row = []
     col = []
     value = []
@@ -91,13 +94,14 @@ def sparse_matrix_dirichlet(n):
 
         # lower neighbour
         if j > 0:
-            row.append(k)
-            col.append(k-n)
-            value.append(1)
+            if not ((j == 1) and (i == 0 or i == n-2)) or (j == n and i == n-1):
+                row.append(k)
+                col.append(k-n)
+                value.append(1)
         
         # left neighbour
         if i > 0:
-            if not (i == 1 and k < (n*(2*n-1))/2):
+            if not (i == 1 and j < (2*n-3)):
                 row.append(k)
                 col.append(k-1)
                 value.append(1)
@@ -109,16 +113,17 @@ def sparse_matrix_dirichlet(n):
 
         # right neighbour
         if i < n - 1:
-            if not (i == n-2 and k >= (n*(2*n-1))/2):
+            if not (i == n-2 and j > 1 ):
                 row.append(k)
                 col.append(k + 1)
                 value.append(1)
 
         # upper neighbour
         if j < (2*n-2):
-            row.append(k)
-            col.append(k + n)
-            value.append(1)
+            if not (j == n-2 and i == 0) or (j == (2*n-2) and (i == 1 or i == n-1)):
+                row.append(k)
+                col.append(k + n)
+                value.append(1)
 
     row = np.array(row)
     col = np.array(col)
