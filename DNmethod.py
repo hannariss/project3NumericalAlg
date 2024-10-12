@@ -1,6 +1,6 @@
 from mpi4py import MPI
 import numpy as np
-from scipy.linalg import solve
+from scipy.sparse.linalg import spsolve as solve
 
 class DN_Method():
 
