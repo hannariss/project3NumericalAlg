@@ -1,6 +1,6 @@
 from mpi4py import MPI
 import numpy as np
-from scipy.linalg import solve
+from scipy.sparse.linalg import spsolve as solve
 
 from sparse_matrix import sparse_matrix_smallroom, sparse_matrix_bigroom
 
@@ -90,7 +90,7 @@ u1_init, u2_init, u3_init = init_u(h)
 #                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4, 1],
 #                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -3]])
 
-A1 = sparse_matrix_smallroom(n=4)
+A1 = sparse_matrix_smallroom(4, 1/3, 16)
 
 # Coefficient matrix A for room 2
 # A2 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -122,7 +122,7 @@ A1 = sparse_matrix_smallroom(n=4)
 #                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4, 0],
 #                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4]])
 
-A2 = sparse_matrix_bigroom(4)
+A2 = sparse_matrix_bigroom(4, 1/3)
 
 #----------------------------
 #         Methods
