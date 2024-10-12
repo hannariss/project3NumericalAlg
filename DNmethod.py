@@ -2,7 +2,7 @@ from mpi4py import MPI
 import numpy as np
 from scipy.sparse.linalg import spsolve as solve
 
-class DN_Method():
+class Apartment():
 
     def __init__(self, h, t_n=15, t_h=40, t_w=5, t_r=20, omega=0.8):
         self.h = h
@@ -135,6 +135,8 @@ class DN_Method():
         
         return u_NC
 
+class DN_Method(Apartment):
+    
     # Step 1: Solve problem for room 2
     def solve_omega2(self, Gamma1, Gamma2, A):
         '''
@@ -267,7 +269,7 @@ class DN_Method():
         # Print initial conditions in process 2
         if self.rank == 2:
             print(f'\n Initial Conditions:')
-            print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n), int(self.n))} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))}')
+            print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n), int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
         
         for iteration in range(iterations):
     
@@ -339,4 +341,4 @@ class DN_Method():
 
                 # Print Temperature distributions in each Iteration
                 print(f'\n\n Iteration {iteration+1}: ')
-                print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))}')
+                print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
