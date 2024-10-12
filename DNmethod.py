@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.sparse.linalg import spsolve as solve
 
 class Apartment():
@@ -344,6 +345,18 @@ class DN_Method(Apartment):
                 print(f'\n\n Iteration {iteration+1}: ')
                 print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
 
+        if self.rank == 2: 
+            u1_plot = u1.reshape(int(self.n),int(self.n))[::-1, :]
+            u2_plot = u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]
+            u3_plot = u3.reshape(int(self.n),int(self.n))[:, ::-1]
+
+            apartment2 = np.full((int(2*self.n-1), int(3*self.n-2)), np.nan)
+            apartment2[0::, int((self.n-1)):int((2*self.n-1))] = u2_plot
+            apartment2[int((self.n-1)):int((2*self.n-1)), 0:int(self.n)] = u1_plot
+            apartment2[0:int(self.n), int((2*self.n-2))::] = u3_plot
+            plt.imshow(apartment2)
+            plt.colorbar()
+            plt.show()
 
 class DN_Method4Rooms(DN_Method):
 
@@ -686,3 +699,4 @@ class DN_Method4Rooms(DN_Method):
                       \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
                       \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}\
                       \n\n Temperature in Omega 4: \n {u4.reshape(int(self.m),int(self.m))[:, ::-1]}')
+        
