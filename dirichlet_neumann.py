@@ -3,10 +3,10 @@ import DNmethod as dn
 
 # Initialize variables
 
-h = 1/3 # Size of steps (delta x)
+h = 1/20 # Size of steps (delta x)
 
-A1 = sparse_matrix_smallroom(4, h, 16) # Coefficient matrix A for rooms 1 and 3
-A2 = sparse_matrix_bigroom(4, h) # Coefficient matrix A for room 2
+A1 = sparse_matrix_smallroom(21, h, 21**2) # Coefficient matrix A for rooms 1 and 3
+A2 = sparse_matrix_bigroom(21, h) # Coefficient matrix A for room 2
 
 # Create flat object
 apartment = dn.DN_Method(h, t_n=15, t_h=70)
