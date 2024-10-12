@@ -2,6 +2,8 @@ from mpi4py import MPI
 import numpy as np
 from scipy.linalg import solve
 
+import DNmethod as dn
+
 #----------------------------
 #    Initialize Variables
 #----------------------------
@@ -19,56 +21,57 @@ t_n = 15 # normal walls
 t_h = 40 # walls with heater 
 t_w = 5 # wallls with window
 
-# Initialize temperature vectors
-def init_u(h, t_n=15, t_h=40, t_w=5, t_r=20):
-    n = (1 / h) + 1
-    u1_init = np.zeros(int(n ** 2))
-    u2_init = np.zeros(int(n * ((2 * n) - 1)))
-    u3_init = np.zeros(int(n ** 2))
+# # Initialize temperature vectors
+# def init_u(h, t_n=15, t_h=40, t_w=5, t_r=20):
+#     n = (1 / h) + 1
+#     u1_init = np.zeros(int(n ** 2))
+#     u2_init = np.zeros(int(n * ((2 * n) - 1)))
+#     u3_init = np.zeros(int(n ** 2))
 
-    # Fill u1_init
-    for ix in range(len(u1_init)):
-        i = ix % n
-        j = ix // n
-        if (j == 0 or j == n - 1) and i != 0:
-            u1_init[ix] = t_n
-        elif i == 0:
-            u1_init[ix] = t_h
-        else:
-            u1_init[ix] = t_r
+#     # Fill u1_init
+#     for ix in range(len(u1_init)):
+#         i = ix % n
+#         j = ix // n
+#         if (j == 0 or j == n - 1) and i != 0:
+#             u1_init[ix] = t_n
+#         elif i == 0:
+#             u1_init[ix] = t_h
+#         else:
+#             u1_init[ix] = t_r
     
-    # Fill u2_init
-    for ix in range(len(u2_init)):
-        i = ix % n
-        j = ix // n
-        if j == 0 and i != 0:
-            u2_init[ix] = t_w
-        elif i == n - 1 and j != 0 and j < n:
-            u2_init[ix] = t_n
-        elif i == 0 and j != 2 * n - 2 and j >= n:
-            u2_init[ix] = t_n
-        elif j == 2 * n - 2 and i != n - 1:
-            u2_init[ix] = t_h
-        elif (j == 0 and i == 0) or (j == 2 * n - 2 and i == n - 1):
-            u2_init[ix] = t_n
-        else:
-            u2_init[ix] = t_r
+#     # Fill u2_init
+#     for ix in range(len(u2_init)):
+#         i = ix % n
+#         j = ix // n
+#         if j == 0 and i != 0:
+#             u2_init[ix] = t_w
+#         elif i == n - 1 and j != 0 and j < n:
+#             u2_init[ix] = t_n
+#         elif i == 0 and j != 2 * n - 2 and j >= n:
+#             u2_init[ix] = t_n
+#         elif j == 2 * n - 2 and i != n - 1:
+#             u2_init[ix] = t_h
+#         elif (j == 0 and i == 0) or (j == 2 * n - 2 and i == n - 1):
+#             u2_init[ix] = t_n
+#         else:
+#             u2_init[ix] = t_r
     
-    # Fill u3_init
-    for ix in range(len(u3_init)):
-        i = ix % n
-        j = ix // n
-        if (j == 0 or j == n - 1) and i != 0:
-            u3_init[ix] = t_n
-        elif i == 0:
-            u3_init[ix] = t_h
-        else:
-            u3_init[ix] = t_r
+#     # Fill u3_init
+#     for ix in range(len(u3_init)):
+#         i = ix % n
+#         j = ix // n
+#         if (j == 0 or j == n - 1) and i != 0:
+#             u3_init[ix] = t_n
+#         elif i == 0:
+#             u3_init[ix] = t_h
+#         else:
+#             u3_init[ix] = t_r
 
-    return u1_init, u2_init, u3_init
+#     return u1_init, u2_init, u3_init
 
-u1_init, u2_init, u3_init = init_u(h)
+# u1_init, u2_init, u3_init = init_u(h)
 
+flat = dn.DN_Method(h)
 
 # Coefficient matrix A for rooms 1 and 3
 A1 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -81,7 +84,7 @@ A1 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 1, 0, 0, 1, -3, 0, 0, 0, 1, 0, 0, 0, 0],
                           [0, 0, 0, 0, 1, 0, 0, 0, -4, 1, 0, 0, 1, 0, 0, 0],
                           [0, 0, 0, 0, 0, 1, 0, 0, 0, -4, 1, 0, 0, 1, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -4, 1, 0, 0, 1, 0],
+                          [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4, 1, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -3, 0, 0, 0, 1],
                           [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, -4, 1, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, -4, 1, 0],
@@ -123,7 +126,7 @@ A2 = 1/(h**2) * np.array([[-4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #         Methods
 #----------------------------
 
-def gamma(vec1, vec2=None): # Note: Specific for h = 1/3
+def gamma(n, vec1, vec2=None):
     '''
     Derives boundary values (Gamma) from temperature vectors of the rooms.
     If two temperature vectors are provided, it extracts boundary values for small rooms (room 1 and room 3).
@@ -137,13 +140,18 @@ def gamma(vec1, vec2=None): # Note: Specific for h = 1/3
     Gamma1 (ndarray): Boundary temperatures from one side of the room.
     Gamma2 (ndarray): Boundary temperatures from the opposite side of the room.
     '''
-    if vec2 is not None: # Two temperature vectors have been provided
-        Gamma1 = np.array([vec1[3], vec1[7], vec1[11], vec1[15]])
-        Gamma2 = np.array([vec2[15], vec2[11], vec2[7], vec2[3]])
-    else: # For room 2
-        Gamma1 = np.array([vec1[0], vec1[4], vec1[8], vec1[12]]) 
-        Gamma2 = np.array([vec1[15], vec1[19], vec1[23], vec1[27]])
+    Gamma1 = np.zeros(int(n))
+    Gamma2 = np.zeros(int(n))
+    max_ix = n - 1
+    for ix in range(len(Gamma1)):
+        if vec2 is not None: # Two temperature vectors have been provided
+            Gamma1[ix] = vec1[max_ix + ix * n]
+            Gamma2[ix] = vec2[max_ix + (max_ix - ix) * n]
+        else: # For room 2
+            Gamma1[ix] = vec1[ix * n]
+            Gamma2[ix] = vec1[(n * n - 1) + ix * n]
     return Gamma1, Gamma2
+
 
 # Step 1: Solve problem for room 2
 def solve_omega2(Gamma1, Gamma2, A): # Note: Specific for h = 1/3
@@ -240,105 +248,105 @@ def reset_walls_2(u2):  # Note: Specific for h = 1/3
 #        Iteration
 #----------------------------
 
-u1 = u1_init
-u2 = u2_init
-u3 = u3_init
+flat.dn_iteration(A1, A2)
 
-### Iteration process with MPI
+# u1, u2, u3 = flat.init_u()
 
-# Print initial conditions in process 2
-if rank == 2:
-    print(f'\n Initial Conditions:')
-    print(f'\n Temperature in Omega 1: \n {u1.reshape(4,4)} \n\n Temperature in Omega 2: \n {u2.reshape(7,4)} \n\n Temperature in Omega 3: \n {u3.reshape(4,4)}')
+# ### Iteration process with MPI
 
-num_iterations = 10
+# # Print initial conditions in process 2
+# if rank == 2:
+#     print(f'\n Initial Conditions:')
+#     print(f'\n Temperature in Omega 1: \n {u1.reshape(4,4)} \n\n Temperature in Omega 2: \n {u2.reshape(7,4)} \n\n Temperature in Omega 3: \n {u3.reshape(4,4)}')
 
-for iteration in range(num_iterations):
+# num_iterations = 10
+
+# for iteration in range(num_iterations):
     
-    # Process 0 computes the temperature distribution for room 2 (Omega 2) in each iteration
-    if rank == 0:
-        # Receive Gamma1 and Gamma2 from process 1
-        Gamma1 = np.empty(4)
-        Gamma2 = np.empty(4)
-        comm.Recv(Gamma1, source=1, tag=iteration)
-        comm.Recv(Gamma2, source=1, tag=(iteration+10))
+#     # Process 0 computes the temperature distribution for room 2 (Omega 2) in each iteration
+#     if rank == 0:
+#         # Receive Gamma1 and Gamma2 from process 1
+#         Gamma1 = np.empty(4)
+#         Gamma2 = np.empty(4)
+#         comm.Recv(Gamma1, source=1, tag=iteration)
+#         comm.Recv(Gamma2, source=1, tag=(iteration+10))
 
-        # Compute u2_new
-        u2_new = solve_omega2(Gamma1, Gamma2, A2)
-        u2_new = reset_walls_2(u2_new)
+#         # Compute u2_new
+#         u2_new = flat.solve_omega2(Gamma1, Gamma2, A2)
+#         u2_new = flat.reset_walls_2(u2_new)
 
-        # Relaxation
-        u2_new = relax(u2, u2_new)
+#         # Relaxation
+#         u2_new = flat.relax(u2, u2_new)
 
-        # Send Gamma1 and Gamma2 to process 1
-        Gamma1, Gamma2 = gamma(u2_new)
-        comm.Send(Gamma1, dest=1, tag=iteration)
-        comm.Send(Gamma2, dest=1, tag=(iteration+10))
+#         # Send Gamma1 and Gamma2 to process 1
+#         Gamma1, Gamma2 = flat.gamma(u2_new)
+#         comm.Send(Gamma1, dest=1, tag=iteration)
+#         comm.Send(Gamma2, dest=1, tag=(iteration+10))
 
-        # Send u2_new to process two
-        comm.Send(u2_new, dest=2, tag=iteration)
+#         # Send u2_new to process two
+#         comm.Send(u2_new, dest=2, tag=iteration)
 
-        # Update u2
-        u2 = u2_new  
+#         # Update u2
+#         u2 = u2_new  
 
-    # Process 1 computes the temperature distributions for room 1 (Omega 1) and room 3 (Omega 3) in each iteration
-    if rank == 1:
-        # Send Gamma1 and Gamma2 to process 0
-        Gamma1, Gamma2 = gamma(u1, u3)
-        comm.Send(Gamma1, dest=0, tag=iteration)
-        comm.Send(Gamma2, dest=0, tag=(iteration+10))
+#     # Process 1 computes the temperature distributions for room 1 (Omega 1) and room 3 (Omega 3) in each iteration
+#     if rank == 1:
+#         # Send Gamma1 and Gamma2 to process 0
+#         Gamma1, Gamma2 = flat.gamma(u1, u3)
+#         comm.Send(Gamma1, dest=0, tag=iteration)
+#         comm.Send(Gamma2, dest=0, tag=(iteration+10))
 
-        # Receive Gamma1 and Gamma2 from process 0
-        Gamma1 = np.empty(4)
-        Gamma2 = np.empty(4)
-        comm.Recv(Gamma1, source=0, tag=iteration)
-        comm.Recv(Gamma2, source=0, tag=(iteration+10))
+#         # Receive Gamma1 and Gamma2 from process 0
+#         Gamma1 = np.empty(4)
+#         Gamma2 = np.empty(4)
+#         comm.Recv(Gamma1, source=0, tag=iteration)
+#         comm.Recv(Gamma2, source=0, tag=(iteration+10))
 
-        # Compute u1_new and u3_new
-        u1_new = solve_omega1(Gamma1, A1)
-        u3_new = solve_omega3(Gamma2, A1)
-        u1_new, u3_new = reset_walls_13(u1_new, u3_new)
+#         # Compute u1_new and u3_new
+#         u1_new = flat.solve_omega1(Gamma1, A1)
+#         u3_new = flat.solve_omega3(Gamma2, A1)
+#         u1_new, u3_new = flat.reset_walls_13(u1_new, u3_new)
 
-        # Relaxation
-        u1_new = relax(u1, u1_new)
-        u3_new = relax(u3, u3_new)
+#         # Relaxation
+#         u1_new = flat.relax(u1, u1_new)
+#         u3_new = flat.relax(u3, u3_new)
 
-        # Send u1_new and u3_new to process two
-        comm.Send(u1_new, dest=2, tag=iteration)
-        comm.Send(u3_new, dest=2, tag=(iteration+10))
+#         # Send u1_new and u3_new to process two
+#         comm.Send(u1_new, dest=2, tag=iteration)
+#         comm.Send(u3_new, dest=2, tag=(iteration+10))
 
-        # Update u1 and u3
-        u1 = u1_new
-        u3 = u3_new
+#         # Update u1 and u3
+#         u1 = u1_new
+#         u3 = u3_new
 
-    # Process 2 prints the temperature distributions for each room in each iteration in form of matrices
-    if rank == 2:
-        # Receive new u1, u2 and u3 vectors from processes 0 and 1
-        u1 = np.empty(16)
-        u2 = np.empty(28)
-        u3 = np.empty(16)     
-        comm.Recv(u2, source=0, tag=iteration)
-        comm.Recv(u1, source=1, tag=iteration)
-        comm.Recv(u3, source=1, tag=(iteration+10))
+#     # Process 2 prints the temperature distributions for each room in each iteration in form of matrices
+#     if rank == 2:
+#         # Receive new u1, u2 and u3 vectors from processes 0 and 1
+#         u1 = np.empty(16)
+#         u2 = np.empty(28)
+#         u3 = np.empty(16)     
+#         comm.Recv(u2, source=0, tag=iteration)
+#         comm.Recv(u1, source=1, tag=iteration)
+#         comm.Recv(u3, source=1, tag=(iteration+10))
 
-        # Print Temperature distributions in each Iteration
-        print(f'\n\n Iteration {iteration+1}: ')
-        print(f'\n Temperature in Omega 1: \n {u1.reshape(4,4)} \n\n Temperature in Omega 2: \n {u2.reshape(7,4)} \n\n Temperature in Omega 3: \n {u3.reshape(4,4)}')
+#         # Print Temperature distributions in each Iteration
+#         print(f'\n\n Iteration {iteration+1}: ')
+#         print(f'\n Temperature in Omega 1: \n {u1.reshape(4,4)} \n\n Temperature in Omega 2: \n {u2.reshape(7,4)} \n\n Temperature in Omega 3: \n {u3.reshape(4,4)}')
 
 
-### Iteration Process without MPI
+# ### Iteration Process without MPI
 
 # print('\n Initial conditions: ')
 # print(f'\n u_1: \n {u1.reshape(4,4)} \n\n u_2: \n {u2.reshape(7,4)} \n\n u_3: \n {u3.reshape(4,4)}')
 
 # iterations = 10
 # while iterations > 0:
-#     Gamma1, Gamma2 = gamma(u1, u3)
+#     Gamma1, Gamma2 = gamma(4, u1, u3)
 #     u2_new = solve_omega2(Gamma1, Gamma2, A2)
 #     u2_new = reset_walls_2(u2_new)
 #     u2_new = relax(u2, u2_new)
 
-#     Gamma1, Gamma2 = gamma(u2_new)
+#     Gamma1, Gamma2 = gamma(4, u2_new)
 #     u1_new = solve_omega1(Gamma1, A1)
 #     u3_new = solve_omega3(Gamma2, A1)
 #     u1_new, u3_new = reset_walls_13(u1_new, u3_new)
