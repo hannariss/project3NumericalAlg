@@ -355,7 +355,9 @@ class DN_Method(Apartment):
             apartment2[int((self.n-1)):int((2*self.n-1)), 0:int(self.n)] = u1_plot
             apartment2[0:int(self.n), int((2*self.n-2))::] = u3_plot
             plt.imshow(apartment2)
-            plt.colorbar()
+            plt.title('Temperature distribution in the apartment')
+            cbar = plt.colorbar()
+            cbar.set_label('Temperature [°C]')
             plt.show()
 
 class DN_Method4Rooms(DN_Method):
@@ -700,3 +702,20 @@ class DN_Method4Rooms(DN_Method):
                       \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}\
                       \n\n Temperature in Omega 4: \n {u4.reshape(int(self.m),int(self.m))[:, ::-1]}')
         
+        if self.rank == 3: 
+            u1_plot = u1.reshape(int(self.n),int(self.n))[::-1, :]
+            u2_plot = u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]
+            u3_plot = u3.reshape(int(self.n),int(self.n))[:, ::-1]
+            u4_plot = u4.reshape(int(self.m),int(self.m))[:, ::-1]
+
+            apartment2 = np.full((int(2*self.n-1), int(3*self.n-2)), np.nan)
+            apartment2[0::, int((self.n-1)):int((2*self.n-1))] = u2_plot
+            apartment2[int((self.n-1)):int((2*self.n-1)), 0:int(self.n)] = u1_plot
+            apartment2[0:int(self.n), int((2*self.n-2))::] = u3_plot
+            apartment2[int(self.n-1):int((self.n+((self.n+1)/2))-1), int(((2*self.n-2))):int(((2*self.n-2)+((self.n+1)/2)))] = u4_plot
+            plt.imshow(apartment2)
+            #plt.yticks([])
+            plt.title('Temperature distribution in the apartment')
+            cbar = plt.colorbar()
+            cbar.set_label('Temperature [°C]')
+            plt.show()
