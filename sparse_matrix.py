@@ -8,17 +8,15 @@ h=1/3
 
 n = 4 # CAUTION: when considering room 4, n needs to be an odd number!
 h = 1/3
-def sparse_matrix_smallroom(n, h, geom_room):
+def sparse_matrix_smallroom(h, room_4=True):
     """
     creates a sparse matrix for room 1, 3, 4
 
     Paramaters:
-    n: int
-        number of 'points' on wall with given mesh width
     h: float
         mesh width
-    geom_room: int
-        defines the geometry of the room, for room 1, 3 it's n**2 for room 4 it's 2*(n/2)
+    room_4: boolean
+        if True then it returns the matrix for room 4, if false it returns the matrix of room 1, 3
     
     Returns:
     out: scipy sparse csr_matrix
@@ -29,7 +27,12 @@ def sparse_matrix_smallroom(n, h, geom_room):
     col = []
     value = []
 
-    for k in range(geom_room):
+    if room_4:
+        n = int((1/h + 2)/2)
+    else:
+        n = int(1/h + 1)
+
+    for k in range(n**2):
         i = k % n
         j = k//n # results in an integer
 
@@ -76,13 +79,11 @@ def sparse_matrix_smallroom(n, h, geom_room):
     return csr_matrix((value, (row, col) )) * 1/(h**2)
 
 
-def sparse_matrix_bigroom(n, h):
+def sparse_matrix_bigroom(h):
     """
     creates a sparse matrix for room 2
 
     Paramaters:
-    n: int
-        number of 'points' on wall with given mesh width
     h: float
         mesh width
     
@@ -94,6 +95,8 @@ def sparse_matrix_bigroom(n, h):
     row = []
     col = []
     value = []
+
+    n = int(1/h + 1)
 
     for k in range(n*(2*n-1)):
         i = k % n
