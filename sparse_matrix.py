@@ -101,7 +101,7 @@ def sparse_matrix_bigroom(n, h):
 
         # lower neighbour
         if j > 0:
-            if not ((j == 1) and (i == 0 or i == n-2)) or (j == n and i == n-1):
+            if not ((j == 1) and (i == 0 or (i > 1 and i < n-1))) or (j == n and i == n-1):
                 row.append(k)
                 col.append(k-n)
                 value.append(1)
@@ -127,7 +127,7 @@ def sparse_matrix_bigroom(n, h):
 
         # upper neighbour
         if j < (2*n-2):
-            if not (j == n-2 and i == 0) or (j == (2*n-2) and (i == 1 or i == n-1)):
+            if not ((j == n-2 and i == 0) or (j == (2*n-3) and ((i > 1 and i < n-2) or (i == n-1)))):             
                 row.append(k)
                 col.append(k + n)
                 value.append(1)
