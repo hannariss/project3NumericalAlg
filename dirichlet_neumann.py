@@ -9,9 +9,9 @@ A1 = sparse_matrix_smallroom(21, h, 21**2) # Coefficient matrix A for rooms 1 an
 A2 = sparse_matrix_bigroom(21, h) # Coefficient matrix A for room 2
 
 # Create flat object
-apartment = dn.DN_Method(h, t_n=15, t_h=70)
+apartment = dn.DN_Method(h, t_n=15, t_h=40)
 
-# Dirichlet Neumann Iteration
+# # Dirichlet Neumann Iteration40
 apartment.dn_iteration(A1, A2)
 
 ## Project 3a:
