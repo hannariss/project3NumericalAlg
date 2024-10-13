@@ -101,18 +101,18 @@ class Apartment():
             if i == 1 and j < self.n:
                 u_DC[ix] = Gamma1[int(j)]
             elif i == self.n - 2 and j >= self.n - 1:
-                u_DC[ix] = Gamma2[int(j - self.n - 1)]
+                u_DC[ix] = Gamma2[int(j - (self.n - 1))]
             
             # Dirichlet Condition for walls
             elif i == 0 and j == 1:
                 u_DC[ix] = self.t_n
-            elif j == 1 and i < self.n:
+            elif j == 1 and i < self.n - 1:
                 u_DC[ix] = self.t_w
-            elif (i == self.n - 1 and j < self.n - 1) or (i == 0 and j == self.n - 2) or (i == self.n - 1 and j == self.n) or (i == self.n - 1 and j == self.n * 2 - 3):
+            elif (i == self.n - 2 and j > 1 and j < self.n - 1) or (i == 0 and j == self.n - 2) or (i == self.n - 1 and j == self.n) or (i == self.n - 1 and j == self.n * 2 - 3):
                 u_DC[ix] = self.t_n
             elif i > 0 and j == self.n * 2 - 3:
                 u_DC[ix] = self.t_h
-            elif i == 1 and j >= self.n:
+            elif i == 1 and j >= self.n and j < 2 * self.n - 2:
                 u_DC[ix] = self.t_n
 
         u_DC = (- 1 / (self.h ** 2)) * u_DC
@@ -341,9 +341,9 @@ class DN_Method(Apartment):
                 self.comm.Recv(u1, source=1, tag=iteration)
                 self.comm.Recv(u3, source=1, tag=(iteration+10))
 
-                # Print Temperature distributions in each Iteration
-                print(f'\n\n Iteration {iteration+1}: ')
-                print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
+                # # Print Temperature distributions in each Iteration
+                # print(f'\n\n Iteration {iteration+1}: ')
+                # print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
 
         if self.rank == 2: 
             u1_plot = u1.reshape(int(self.n),int(self.n))[::-1, :]
