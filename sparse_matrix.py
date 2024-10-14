@@ -1,8 +1,6 @@
 from scipy.sparse import csr_matrix
 import numpy as np
 
-h=1/3
-
 #Add on 3a:
 #for room 1, 3 geom_room is n**2, for room 4 geom_room would be 2*(n/2)
 
