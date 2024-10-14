@@ -14,6 +14,10 @@ apartment = dn.DN_Method(h)
 # Dirichlet Neumann Iteration
 apartment.dn_iteration(A1, A2)
 
+### Task 2:
+# Except in the lower parts of room 2 (close to the window), the temperature in all rooms is about 20 degrees.
+# Assuming that 20 degrees is a reasonable temperature for winter, the heating in the flat is adequate.
+
 ### Task 3:
 
 h = 1/20 
