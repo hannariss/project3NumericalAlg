@@ -4,6 +4,11 @@
 
 **Note:** We both worked on all parts of the project together
 
+## Instructions
+
+The main.py file has to be executed using three processes. 
+This can be done by using the command <mpiexec /np 3 python main.py> in the command line.
+
 ## Project Structure
 
 The project contains the following files:
