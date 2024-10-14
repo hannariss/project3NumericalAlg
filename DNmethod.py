@@ -413,8 +413,7 @@ class DN_Method(Apartment):
                 plt.title('Temperature distribution in the apartment')
                 cbar = plt.colorbar()
                 cbar.set_label('Temperature [°C]')
-                plt.show()
-
+                plt.show()        
 class DN_Method4Rooms(DN_Method):
 
     def init_u(self):
@@ -816,7 +815,6 @@ class DN_Method4Rooms(DN_Method):
             apartment2[0:int(self.n), int((2*self.n-2))::] = u3_plot
             apartment2[int(self.n-1):int((self.n+((self.n+1)/2))-1), int(((2*self.n-2))):int(((2*self.n-2)+((self.n+1)/2)))] = u4_plot
             plt.imshow(apartment2)
-            #plt.yticks([])
             plt.title('Temperature distribution in the apartment')
             cbar = plt.colorbar()
             cbar.set_label('Temperature [°C]')
