@@ -7,10 +7,10 @@ class Apartment():
 
     def __init__(self, h, t_n=15, t_h=40, t_w=5, t_r=20, omega=0.8):
         self.h = h
-        self.t_n = t_n
-        self.t_h = t_h
-        self.t_w = t_w
-        self.t_r = t_r
+        self.t_n = t_n # Normal wall Temperature
+        self.t_h = t_h # Wall with heating
+        self.t_w = t_w # Wall with window
+        self.t_r = t_r # Initial interior room temperature
         self.omega = omega
         self.n = (1 / h) + 1
         self.m = (self.n + 1) / 2
@@ -18,8 +18,16 @@ class Apartment():
         self.comm = MPI.Comm.Clone( MPI.COMM_WORLD )
         self.rank = self.comm.Get_rank()
     
-    # Initialize temperature vectors
     def init_u(self):
+        '''
+        Initializes temperature vectors for the three rooms in the apartment. 
+        Each room is represented by a temperature vector, with the boundary conditions set based on specific temperature parameters.
+
+        Returns:
+        u1_init (ndarray): Temperature vector for room 1, initialized with boundary and interior conditions.
+        u2_init (ndarray): Temperature vector for room 2, initialized with boundary and interior conditions.
+        u3_init (ndarray): Temperature vector for room 3, initialized with boundary and interior conditions.
+        '''
         u1_init = np.zeros(int(self.n ** 2))
         u2_init = np.zeros(int(self.n * ((2 * self.n) - 1)))
         u3_init = np.zeros(int(self.n ** 2))
@@ -67,17 +75,17 @@ class Apartment():
     
     def gamma(self, vec1, vec2=None):
         '''
-        Derives boundary values (Gamma) from temperature vectors of the rooms.
-        If two temperature vectors are provided, it extracts boundary values for small rooms (room 1 and room 3).
-        If only one temperature vector is provided, it extracts boundary values for the large room (room 2).
-        
+        Computes boundary temperatures (Gamma) at the interfaces between adjacent rooms based on the temperature distribution in the rooms.
+        - For two input vectors (`vec1` and `vec2`), it extracts boundary values for small rooms (room 1 and room 3).
+        - For one input vector (`vec1`), it extracts boundary values for the large room (room 2).
+
         Parameters:
-        vec1 (ndarray): Temperature vector of room 1 or 2.
-        vec2 (ndarray, optional): Temperature vector of room 3.
-        
+        vec1 (ndarray): Temperature vector of room 1 or room 2.
+        vec2 (ndarray, optional): Temperature vector of room 3 (if extracting boundary values for room 1 and room 3).
+
         Returns:
-        Gamma1 (ndarray): Boundary temperatures from the left interface.
-        Gamma2 (ndarray): Boundary temperatures from the right interface.
+        Gamma1 (ndarray): Boundary temperatures at the left interface between rooms.
+        Gamma2 (ndarray): Boundary temperatures at the right interface between rooms.
         '''
         Gamma1, Gamma2 = np.zeros(int(self.n)), np.zeros(int(self.n))
         max_ix = self.n - 1
@@ -91,6 +99,17 @@ class Apartment():
         return Gamma1, Gamma2
     
     def set_uDC(self, Gamma1, Gamma2):
+        '''
+        Sets the Dirichlet conditions for the temperature vector of room 2, which enforces specific temperatures on the boundaries.
+        It includes both the walls and the interfaces between the adjacent rooms (Gamma1 and Gamma2).
+
+        Parameters:
+        Gamma1 (ndarray): Boundary temperature values at the left interface.
+        Gamma2 (ndarray): Boundary temperature values at the right interface.
+
+        Returns:
+        u_DC (ndarray): The vector for the right hand side of the equation system for room 2 with the Dirichlet boundary conditions applied.
+        '''
         u_DC = np.zeros(int(self.n * ((2 * self.n) - 1)))
 
         for ix in range(len(u_DC)):
@@ -119,6 +138,16 @@ class Apartment():
         return u_DC
     
     def set_uNC(self, Gamma):
+        '''
+        Sets the Neumann conditions for the temperature vector of room 1 or room 3, applying temperature gradients at the interface.
+        Additionally, Dirichlet conditions are applied on the walls.
+
+        Parameters:
+        Gamma (ndarray): Boundary temperature values at the interface with room 2.
+
+        Returns:
+        u_NC (ndarray): The vector for the right hand side of the equation system for room 1 or room 3 with the Neumann (and Dirichlet) boundary conditions applied.
+        '''
         u_NC = np.zeros(int(self.n ** 2))
 
         for ix in range(len(u_NC)):
@@ -142,12 +171,13 @@ class DN_Method(Apartment):
     # Step 1: Solve problem for room 2
     def solve_omega2(self, Gamma1, Gamma2, A):
         '''
-        Solves for the temperature distribution in room 2 given the boundary values (Gamma1 and Gamma2).
-
+        Solves for the temperature distribution in room 2 (the large room) given boundary 
+        conditions from the adjacent rooms (room 1 and room 3).
+        
         Parameters:
-        Gamma1 (ndarray): Boundary values from room 1.
-        Gamma2 (ndarray): Boundary values from room 3.
-        A (ndarray): Coefficient matrix for room 2.
+        Gamma1 (ndarray): Boundary temperature values at the left interface (from room 1).
+        Gamma2 (ndarray): Boundary temperature values at the right interface (from room 3).
+        A (ndarray): Coefficient matrix that represents the discretized system for room 2.
 
         Returns:
         u2_new (ndarray): New temperature distribution in room 2.
@@ -159,11 +189,12 @@ class DN_Method(Apartment):
     # Step 2: Solve problem for room 1 and 3 (single functions for each room)
     def solve_omega1(self, Gamma1, A): 
         '''
-        Solves for the temperature distribution in room 1 given the boundary values from room 2.
+        Solves for the temperature distribution in room 1 (the small room on the left) given the boundary 
+        conditions from room 2.
 
         Parameters:
-        Gamma1 (ndarray): Boundary values from room 2.
-        A (ndarray): Coefficient matrix for room 1.
+        Gamma1 (ndarray): Boundary temperature values at the interface with room 2.
+        A (ndarray): Coefficient matrix that represents the discretized system for room 1.
 
         Returns:
         u1_new (ndarray): New temperature distribution in room 1.
@@ -174,11 +205,12 @@ class DN_Method(Apartment):
 
     def solve_omega3(self, Gamma2, A):
         '''
-        Solves for the temperature distribution in room 3 given the boundary values from room 2.
+        Solves for the temperature distribution in room 3 (the small room on the right) given the 
+        boundary conditions from room 2.
 
         Parameters:
-        Gamma2 (ndarray): Boundary values from room 2.
-        A (ndarray): Coefficient matrix for room 3.
+        Gamma2 (ndarray): Boundary temperature values at the interface with room 2 (reversed for proper orientation).
+        A (ndarray): Coefficient matrix that represents the discretized system for room 3.
 
         Returns:
         u3_new (ndarray): New temperature distribution in room 3.
@@ -191,14 +223,15 @@ class DN_Method(Apartment):
     # Between Step 2 and Step 3: Reset wall temperatures in new temperature vectors
     def reset_walls_13(self, u1, u3): 
         '''
-        Resets the wall temperatures to predefined values after solving for the temperature distribution in rooms 1 and 3.
+        Resets the wall temperatures to predefined boundary values in the temperature vectors of rooms 1 and 3. 
+        This step is performed after solving the temperature distribution in these rooms to ensure consistency with boundary conditions.
 
         Parameters:
-        u1 (ndarray): Temperature vector for room 1.
-        u3 (ndarray): Temperature vector for room 3.
+        u1 (ndarray): Temperature vector for room 1 after solving for the temperature distribution.
+        u3 (ndarray): Temperature vector for room 3 after solving for the temperature distribution.
 
         Returns:
-        tuple: Updated temperature vectors for room 1 and room 3 with boundary (wall) values reset.
+        tuple: Updated temperature vectors for room 1 and room 3, with the wall boundary values reset.
         '''
         u1_walls = np.zeros(int(self.n ** 2))
         u3_walls = np.zeros(int(self.n ** 2))
@@ -221,13 +254,14 @@ class DN_Method(Apartment):
 
     def reset_walls_2(self, u2):  
         '''
-        Resets the wall temperatures to predefined values after solving for the temperature distribution in room 2.
+        Resets the wall temperatures to predefined boundary values in the temperature vector of room 2.
+        This step is performed after solving the temperature distribution in room 2 to ensure consistency with boundary conditions.
 
         Parameters:
-        u2 (ndarray): Temperature vector for room 2.
+        u2 (ndarray): Temperature vector for room 2 after solving for the temperature distribution.
 
         Returns:
-        ndarray: Updated temperature vector for room 2 with boundary (wall) values reset.
+        ndarray: Updated temperature vector for room 2 with the boundary (wall) values reset.
         '''
         u2_walls = np.zeros(int(self.n * ((2 * self.n) - 1)))
         
@@ -266,12 +300,30 @@ class DN_Method(Apartment):
         return u_new
     
     def dn_iteration(self, A1, A2, iterations=10):
+        '''
+        Executes the Dirichlet-Neumann iteration process for solving the temperature distribution in a three-room system (Omega 1, Omega 2, and Omega 3).
+        This iteration uses three ranks (processes): 
+        - Process 0 solves for the large central room (Omega 2) based on boundary conditions from the two small rooms (Omega 1 and Omega 3).
+        - Process 1 solves for the small rooms (Omega 1 and Omega 3) based on boundary conditions from Omega 2.
+        - Process 2 receives and prints the temperature distributions from processes 0 and 1, and optionally visualizes them.
+
+        Parameters:
+        A1 (ndarray): Coefficient matrix for rooms 1 and 3 (small rooms).
+        A2 (ndarray): Coefficient matrix for room 2 (large room).
+        iterations (int, optional): The number of iterations for the Dirichlet-Neumann exchange (default is 10).
+
+        Returns:
+        None. This function performs the iteration process, exchanging temperature data between processes and optionally printing or visualizing the results.
+        '''
         u1, u2, u3 = self.init_u()
 
         # Print initial conditions in process 2
         if self.rank == 2:
-            print(f'\n Initial Conditions:')
-            print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n), int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
+            if self.n == 4: # We only want print statements of the temperature distribution if n is smaller than 4
+                print(f'\n Initial Conditions:')
+                print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n), int(self.n))[::-1, :]} \
+                       \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
+                       \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
         
         for iteration in range(iterations):
     
@@ -340,29 +392,43 @@ class DN_Method(Apartment):
                 self.comm.Recv(u2, source=0, tag=iteration)
                 self.comm.Recv(u1, source=1, tag=iteration)
                 self.comm.Recv(u3, source=1, tag=(iteration+10))
-
-                # # Print Temperature distributions in each Iteration
-                # print(f'\n\n Iteration {iteration+1}: ')
-                # print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
-
+                if self.n == 4: # We only want print statements of the temperature distribution if n is smaller than 4
+                    print(f'\n\n Iteration {iteration+1}: ')
+                    print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \
+                          \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
+                          \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}')
+        
+        # Plot Temperature distributions
         if self.rank == 2: 
-            u1_plot = u1.reshape(int(self.n),int(self.n))[::-1, :]
-            u2_plot = u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]
-            u3_plot = u3.reshape(int(self.n),int(self.n))[:, ::-1]
+            if self.n > 4: # We only want print statements of the temperature distribution when n is smaller than 4
+                u1_plot = u1.reshape(int(self.n),int(self.n))[::-1, :]
+                u2_plot = u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]
+                u3_plot = u3.reshape(int(self.n),int(self.n))[:, ::-1]
 
-            apartment2 = np.full((int(2*self.n-1), int(3*self.n-2)), np.nan)
-            apartment2[0::, int((self.n-1)):int((2*self.n-1))] = u2_plot
-            apartment2[int((self.n-1)):int((2*self.n-1)), 0:int(self.n)] = u1_plot
-            apartment2[0:int(self.n), int((2*self.n-2))::] = u3_plot
-            plt.imshow(apartment2)
-            plt.title('Temperature distribution in the apartment')
-            cbar = plt.colorbar()
-            cbar.set_label('Temperature [°C]')
-            plt.show()
+                apartment2 = np.full((int(2*self.n-1), int(3*self.n-2)), np.nan)
+                apartment2[0::, int((self.n-1)):int((2*self.n-1))] = u2_plot
+                apartment2[int((self.n-1)):int((2*self.n-1)), 0:int(self.n)] = u1_plot
+                apartment2[0:int(self.n), int((2*self.n-2))::] = u3_plot
+                plt.imshow(apartment2)
+                plt.title('Temperature distribution in the apartment')
+                cbar = plt.colorbar()
+                cbar.set_label('Temperature [°C]')
+                plt.show()
 
 class DN_Method4Rooms(DN_Method):
 
     def init_u(self):
+        '''
+        Initializes the temperature distribution for all four rooms (Omega 1, Omega 2, Omega 3, and the new room Omega 4).
+        Each room's temperature distribution is represented by a vector with initial boundary conditions set according to
+        predefined temperature values for the walls and interior.
+
+        Returns:
+        u1_init (ndarray): Initial temperature distribution for room 1 (Omega 1) of size n x n.
+        u2_init (ndarray): Initial temperature distribution for room 2 (Omega 2) of size n x (2n - 1).
+        u3_init (ndarray): Initial temperature distribution for room 3 (Omega 3) of size n x n.
+        u4_init (ndarray): Initial temperature distribution for room 4 (Omega 4) of size m x m.
+        '''
         u1_init = np.zeros(int(self.n ** 2))
         u2_init = np.zeros(int(self.n * ((2 * self.n) - 1)))
         u3_init = np.zeros(int(self.n ** 2))
@@ -422,17 +488,15 @@ class DN_Method4Rooms(DN_Method):
     
     def gamma123(self, vec1):
         '''
-        Derives boundary values (Gamma) from temperature vectors of the rooms.
-        If two temperature vectors are provided, it extracts boundary values for small rooms (room 1 and room 3).
-        If only one temperature vector is provided, it extracts boundary values for the large room (room 2).
-        
+        Extracts boundary values (Gamma1, Gamma2, Gamma3) from the temperature vector of room 2.
+
         Parameters:
-        vec1 (ndarray): Temperature vector of room 1 or 2.
-        vec2 (ndarray, optional): Temperature vector of room 3.
-        
+        vec1 (ndarray): Temperature vector from room 2 from which boundary values will be extracted.
+
         Returns:
-        Gamma1 (ndarray): Boundary temperatures from the left interface.
-        Gamma2 (ndarray): Boundary temperatures from the right interface.
+        Gamma1 (ndarray): Boundary values along the left wall of the room (for room 1).
+        Gamma2 (ndarray): Boundary values along the right wall of the room (for room 2).
+        Gamma3 (ndarray): Boundary values along a specified wall of room 3 (additional room).
         '''
         Gamma1, Gamma2, Gamma3 = np.zeros(int(self.n)), np.zeros(int(self.n)), np.zeros(int(self.m))
         max_ix = self.n - 1
@@ -445,6 +509,15 @@ class DN_Method4Rooms(DN_Method):
         return Gamma1, Gamma2, Gamma3
     
     def gamma3(self, vec1):
+        '''
+        Extracts boundary values (Gamma3) from the temperature vector of room 4 (Omega 4).
+
+        Parameters:
+        vec1 (ndarray): Temperature vector from room 4 from which boundary values will be extracted.
+
+        Returns:
+        Gamma3 (ndarray): Boundary values along the left wall of room 4.
+        '''
         Gamma3 = np.zeros(int(self.m))
         max_ix = self.m - 1
         for ix in range(len(Gamma3)):
@@ -452,6 +525,19 @@ class DN_Method4Rooms(DN_Method):
         return Gamma3
       
     def set_uDC(self, Gamma1, Gamma2, Gamma3):
+        '''
+        Sets the Dirichlet boundary conditions for the temperature distribution in room 2 (Omega 2).
+        The boundary conditions are determined by the values at the interfaces (Gamma1, Gamma2, and Gamma3) 
+        between rooms 1, 2, and 3, as well as the fixed wall temperatures.
+
+        Parameters:
+        Gamma1 (ndarray): Temperature values at the interface between room 1 and room 2.
+        Gamma2 (ndarray): Temperature values at the interface between room 2 and room 3.
+        Gamma3 (ndarray): Temperature values at the interface between room 2 and room 4 (new room).
+
+        Returns:
+        u_DC (ndarray): The vector for the right hand side of the equation system for room 2 with the Dirichlet boundary conditions applied.
+        '''
         u_DC = np.zeros(int(self.n * ((2 * self.n) - 1)))
 
         for ix in range(len(u_DC)):
@@ -462,26 +548,36 @@ class DN_Method4Rooms(DN_Method):
             if i == 1 and j < self.n:
                 u_DC[ix] = Gamma1[int(j)]
             elif i == self.n - 2 and j >= self.n - 1:
-                u_DC[ix] = Gamma2[int(j - self.n - 1)]
+                u_DC[ix] = Gamma2[int(j - (self.n - 1))]
             elif i == self.n - 2 and j >= self.n // 2:
-                u_DC[ix] = Gamma3[int(j - self.m - 1)]
+                u_DC[ix] = Gamma3[int(j - (self.m - 1))]
             
             # Dirichlet Condition for walls
             elif i == 0 and j == 1:
                 u_DC[ix] = self.t_n
-            elif j == 1 and i < self.n:
+            elif j == 1 and i < self.n - 1:
                 u_DC[ix] = self.t_w
-            elif (i == self.n - 1 and j < self.n - 1) or (i == 0 and j == self.n - 2) or (i == self.n - 1 and j == self.n) or (i == self.n - 1 and j == self.n * 2 - 3):
+            elif (i == self.n - 2 and j > 1 and j < self.n - 1) or (i == 0 and j == self.n - 2) or (i == self.n - 1 and j == self.n) or (i == self.n - 1 and j == self.n * 2 - 3):
                 u_DC[ix] = self.t_n
             elif i > 0 and j == self.n * 2 - 3:
                 u_DC[ix] = self.t_h
-            elif i == 1 and j >= self.n:
+            elif i == 1 and j >= self.n and j < 2 * self.n - 2:
                 u_DC[ix] = self.t_n
 
         u_DC = (- 1 / (self.h ** 2)) * u_DC
         return u_DC
     
     def set_uNC_room4(self, Gamma):
+        '''
+        Sets the Neumann conditions for the temperature vector of room 4, applying temperature gradients at the interface.
+        Additionally, Dirichlet conditions are applied on the walls.
+
+        Parameters:
+        Gamma (ndarray): Boundary temperature values at the interface with room 2.
+
+        Returns:
+        u_NC (ndarray): The vector for the right hand side of the equation system for room 4 with the Neumann (and Dirichlet) boundary conditions applied.
+        '''
         u_NC = np.zeros(int(self.m ** 2))
 
         for ix in range(len(u_NC)):
@@ -502,15 +598,16 @@ class DN_Method4Rooms(DN_Method):
     
     def solve_omega2(self, Gamma1, Gamma2, Gamma3, A):
         '''
-        Solves for the temperature distribution in room 2 given the boundary values (Gamma1 and Gamma2).
+        Solves for the temperature distribution in room 2 (Omega 2) using the boundary conditions from rooms 1, 3, and 4.
 
         Parameters:
-        Gamma1 (ndarray): Boundary values from room 1.
-        Gamma2 (ndarray): Boundary values from room 3.
+        Gamma1 (ndarray): Boundary values from the interface between room 1 and room 2 (Gamma 1).
+        Gamma2 (ndarray): Boundary values from the interface between room 2 and room 3 (Gamma 2).
+        Gamma3 (ndarray): Boundary values from the interface between room 2 and room 4 (Gamma 3).
         A (ndarray): Coefficient matrix for room 2.
 
         Returns:
-        u2_new (ndarray): New temperature distribution in room 2.
+        u2_new (ndarray): Updated temperature distribution in room 2.
         '''
         u_DC = self.set_uDC(Gamma1, Gamma2, Gamma3)
         u2_new = solve(A, u_DC)
@@ -518,14 +615,14 @@ class DN_Method4Rooms(DN_Method):
     
     def solve_omega4(self, Gamma3, A):
         '''
-        Solves for the temperature distribution in room 4 given the boundary values from room 2.
+        Solves for the temperature distribution in room 4 (Omega 4) using the boundary conditions from room 2 (Gamma 3).
 
         Parameters:
-        Gamma3 (ndarray): Boundary values from room 2.
+        Gamma3 (ndarray): Boundary values from the interface between room 2 and room 4 (Gamma 3).
         A (ndarray): Coefficient matrix for room 4.
 
         Returns:
-        u4_new (ndarray): New temperature distribution in room 4.
+        u4_new (ndarray): Updated temperature distribution in room 4.
         '''
         Gamma3_reversed = Gamma3[::-1]
         u_NC = self.set_uNC_room4(Gamma3_reversed)
@@ -534,13 +631,13 @@ class DN_Method4Rooms(DN_Method):
     
     def reset_walls_2(self, u2):  
         '''
-        Resets the wall temperatures to predefined values after solving for the temperature distribution in room 2.
+        Resets the wall temperatures to predefined values after solving for the temperature distribution in room 2 (Omega 2).
 
         Parameters:
-        u2 (ndarray): Temperature vector for room 2.
+        u2 (ndarray): Computed temperature vector for room 2, which include non-boundary (interior) temperatures.
 
         Returns:
-        ndarray: Updated temperature vector for room 2 with boundary (wall) values reset.
+        ndarray: Updated temperature vector for room 2 with wall (boundary) temperatures reset to predefined values.
         '''
         u2_walls = np.zeros(int(self.n * ((2 * self.n) - 1)))
         
@@ -565,13 +662,13 @@ class DN_Method4Rooms(DN_Method):
 
     def reset_walls_4(self, u4): 
         '''
-        Resets the wall temperatures to predefined values after solving for the temperature distribution in room 4.
+        Resets the wall temperatures to predefined values after solving for the temperature distribution in room 4 (Omega 4).
 
         Parameters:
-        u4 (ndarray): Temperature vector for room 4.
+        u4 (ndarray): Computed temperature vector for room 4, which include non-boundary (interior) temperatures.
 
         Returns:
-        tuple: Updated temperature vectors for room 4 with boundary (wall) values reset.
+        ndarray: Updated temperature vector for room 4 with wall (boundary) temperatures reset to predefined values.
         '''
         u4_walls = np.zeros(int(self.m ** 2))
 
@@ -589,27 +686,44 @@ class DN_Method4Rooms(DN_Method):
         return u4_walls
     
     def dn_iteration(self, A1, A2, A3, iterations=10):
+        '''
+        Executes the Dirichlet-Neumann iteration process for solving the temperature distribution 
+        in a four-room system (Omega 1, Omega 2, Omega 3 and Omega4).
+        This iteration uses three ranks (processes): 
+        - Process 0: Computes the temperature distribution for room 2 (Omega 2).
+        - Process 1: Computes the temperature distributions for rooms 1 (Omega 1), 3 (Omega 3), and 4 (Omega 4).
+        - Process 2: Plots (optionally prints) the temperature distribution for all rooms after each iteration.
+        
+        Parameters:
+        A1 (ndarray): Coefficient matrix for the finite difference scheme in rooms 1 and 3 (Omega 1 and Omega 3).
+        A2 (ndarray): Coefficient matrix for the finite difference scheme in room 2 (Omega 2).
+        A3 (ndarray): Coefficient matrix for the finite difference scheme in room 4 (Omega 4).
+        iterations (int): Number of iterations for the Dirichlet-Neumann method. Default is 10.
+
+        Returns:
+        None
+        '''
         u1, u2, u3, u4 = self.init_u()
 
-        # Print initial conditions in process 3
-        if self.rank == 3:
-            print(f'\n Initial Conditions:')
-            print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n), int(self.n))[::-1, :]} \
-                   \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
-                   \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]} \
-                   \n\n Temperature in Omega 4: \n {u4.reshape(int(self.m),int(self.m))[:, ::-1]}')
+        # # Print initial conditions in process 2
+        # if self.rank == 2:
+        #     print(f'\n Initial Conditions:')
+        #     print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n), int(self.n))[::-1, :]} \
+        #            \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
+        #            \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]} \
+        #            \n\n Temperature in Omega 4: \n {u4.reshape(int(self.m),int(self.m))[:, ::-1]}')
         
         for iteration in range(iterations):
     
             # Process 0 computes the temperature distribution for room 2 (Omega 2) in each iteration
             if self.rank == 0:
-                # Receive Gamma1 and Gamma2 from process 1, Gamma3 from process 2
+                # Receive Gamma1, Gamma2 and Gamm3 from process 1
                 Gamma1 = np.empty(int(self.n))
                 Gamma2 = np.empty(int(self.n))
                 Gamma3 = np.empty(int(self.m))
                 self.comm.Recv(Gamma1, source=1, tag=iteration)
                 self.comm.Recv(Gamma2, source=1, tag=(iteration+10))
-                self.comm.Recv(Gamma3, source=2, tag=iteration)
+                self.comm.Recv(Gamma3, source=1, tag=(iteration+20))
 
                 # Compute u2_new
                 u2_new = self.solve_omega2(Gamma1, Gamma2, Gamma3, A2)
@@ -622,69 +736,56 @@ class DN_Method4Rooms(DN_Method):
                 Gamma1, Gamma2, Gamma3 = self.gamma123(u2_new)
                 self.comm.Send(Gamma1, dest=1, tag=iteration)
                 self.comm.Send(Gamma2, dest=1, tag=(iteration+10))
-                self.comm.Send(Gamma3, dest=2, tag=iteration)
+                self.comm.Send(Gamma3, dest=1, tag=(iteration+20))
 
                 # Send u2_new to process 3
-                self.comm.Send(u2_new, dest=3, tag=iteration)
+                self.comm.Send(u2_new, dest=2, tag=iteration)
 
                 # Update u2
                 u2 = u2_new  
 
-            # Process 1 computes the temperature distributions for room 1 (Omega 1) and room 3 (Omega 3) in each iteration
+            # Process 1 computes the temperature distributions for room 1 (Omega 1), room 3 (Omega 3) 
+            # and room 4 (Omega 4) in each iteration
             if self.rank == 1:
-                # Send Gamma1 and Gamma2 to process 0
+                # Send Gamma1, Gamma2 and Gamma3 to process 0
                 Gamma1, Gamma2 = self.gamma(u1, u3)
+                Gamma3 = self.gamma3(u4)
                 self.comm.Send(Gamma1, dest=0, tag=iteration)
                 self.comm.Send(Gamma2, dest=0, tag=(iteration+10))
+                self.comm.Send(Gamma3, dest=0, tag=(iteration+20))
 
-                # Receive Gamma1 and Gamma2 from process 0
+                # Receive Gamma1, Gamma2 and Gamma3 from process 0
                 Gamma1 = np.empty(int(self.n))
                 Gamma2 = np.empty(int(self.n))
+                Gamma3 = np.empty(int(self.m))
                 self.comm.Recv(Gamma1, source=0, tag=iteration)
                 self.comm.Recv(Gamma2, source=0, tag=(iteration+10))
+                self.comm.Recv(Gamma3, source=0, tag=(iteration+20))
 
-                # Compute u1_new and u3_new
+                # Compute u1_new, u3_new and u4_new
                 u1_new = self.solve_omega1(Gamma1, A1)
                 u3_new = self.solve_omega3(Gamma2, A1)
+                u4_new = self.solve_omega4(Gamma3, A3)
                 u1_new, u3_new = self.reset_walls_13(u1_new, u3_new)
+                u4_new = self.reset_walls_4(u4_new)                
 
                 # Relaxation
                 u1_new = self.relax(u1, u1_new)
                 u3_new = self.relax(u3, u3_new)
-
-                # Send u1_new and u3_new to process two
-                self.comm.Send(u1_new, dest=3, tag=iteration)
-                self.comm.Send(u3_new, dest=3, tag=(iteration+10))
-
-                # Update u1 and u3
-                u1 = u1_new
-                u3 = u3_new
-
-            # Process 2 computes the temperature distributions for room 4 (Omega 4) in each iteration
-            if self.rank == 2:
-                # Send Gamma3 to process 0
-                Gamma3 = self.gamma3(u4)
-                self.comm.Send(Gamma3, dest=0, tag=iteration)
-
-                # Receive Gamma3 from process 0
-                Gamma3 = np.empty(int(self.m))
-                self.comm.Recv(Gamma3, source=0, tag=iteration)
-
-                # Compute u1_new and u3_new
-                u4_new = self.solve_omega4(Gamma3, A3)
-                u4_new = self.reset_walls_4(u4_new)
-
-                # Relaxation
                 u4_new = self.relax(u4, u4_new)
 
-                # Send u4_new to process 3
-                self.comm.Send(u4_new, dest=3, tag=iteration)
+                # Send new temperature vectors to process two
+                self.comm.Send(u1_new, dest=2, tag=iteration)
+                self.comm.Send(u3_new, dest=2, tag=(iteration+10))
+                self.comm.Send(u4_new, dest=2, tag=(iteration+20))
 
-                # Update u4
+                # Update u1, u3 and u4
+                u1 = u1_new
+                u3 = u3_new
                 u4 = u4_new
 
-            # Process 3 prints the temperature distributions for each room in each iteration in form of matrices
-            if self.rank == 3:
+            # Process 2 prints the temperature distributions for each room in each iteration in form of matrices
+            if self.rank == 2:
                 # Receive new u1, u2, u3 and u4 vectors from processes 0, 1 and 2
                 u1 = np.empty(int(self.n ** 2))
                 u2 = np.empty(int(self.n * ((2 * self.n) - 1)))
@@ -693,16 +794,17 @@ class DN_Method4Rooms(DN_Method):
                 self.comm.Recv(u2, source=0, tag=iteration)
                 self.comm.Recv(u1, source=1, tag=iteration)
                 self.comm.Recv(u3, source=1, tag=(iteration+10))
-                self.comm.Recv(u4, source=2, tag=iteration)
+                self.comm.Recv(u4, source=1, tag=(iteration+20))
 
-                # Print Temperature distributions in each Iteration
-                print(f'\n\n Iteration {iteration+1}: ')
-                print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \
-                      \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
-                      \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}\
-                      \n\n Temperature in Omega 4: \n {u4.reshape(int(self.m),int(self.m))[:, ::-1]}')
+                # # Print Temperature distributions in each Iteration
+                # print(f'\n\n Iteration {iteration+1}: ')
+                # print(f'\n Temperature in Omega 1: \n {u1.reshape(int(self.n),int(self.n))[::-1, :]} \
+                #       \n\n Temperature in Omega 2: \n {u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]} \
+                #       \n\n Temperature in Omega 3: \n {u3.reshape(int(self.n),int(self.n))[:, ::-1]}\
+                #       \n\n Temperature in Omega 4: \n {u4.reshape(int(self.m),int(self.m))[:, ::-1]}')
         
-        if self.rank == 3: 
+        # Plot Temperature distributions
+        if self.rank == 2: 
             u1_plot = u1.reshape(int(self.n),int(self.n))[::-1, :]
             u2_plot = u2.reshape(int(2 * self.n - 1),int(self.n))[::-1, :]
             u3_plot = u3.reshape(int(self.n),int(self.n))[:, ::-1]
